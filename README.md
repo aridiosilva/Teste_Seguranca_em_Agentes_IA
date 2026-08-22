@@ -1417,7 +1417,7 @@ O **agentes_teste_config.json** fica em config/agentes_teste_config.json, e é l
 
 ## O que mudou de fato no código, removendo o hardcode:
 
-```txt
+
 - Antes (hardcoded em Python)	Agora (lido do config)
 
 -  IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-","C2-","C3-")	Derivado de agentes.agente_gerador.tipos_de_teste via regex
@@ -1427,7 +1427,7 @@ O **agentes_teste_config.json** fica em config/agentes_teste_config.json, e é l
 - SEVERIDADES_QUE_EXIGEM_REVISAO_HUMANA = {"Crítica","Alta"}	config.regras_globais.severidades_que_exigem_revisao_humana — idem
 
 - Allowlist de e-mail/domínio no SandboxToolkit.__init__	config.ambiente_sandbox() — idem
-```
+
 
 Precisei estender o JSON com três campos que não existiam nele antes (criterios_severidade, regras_globais.severidades_que_exigem_revisao_humana, ambiente_sandbox) — a versão original só descrevia guardrails em texto livre, não valores que o código pudesse consumir diretamente. Documentei isso no README.
 
