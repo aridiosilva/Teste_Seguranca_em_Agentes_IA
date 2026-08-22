@@ -2,9 +2,9 @@
 Orquestrador do ciclo de teste completo:
 agente_gerador -> agente_alvo -> agente_avaliador -> repositorio_evidencia
 
-Executa a bateria inteira de casos e produz o relatorio final
-(contagens por veredito/severidade e lista de achados que aguardam
-revisao humana), conforme secoes 9 e 10 do framework.
+O agentes_teste_config.json e carregado e validado UMA VEZ aqui
+(ConfigAgentesTeste) e injetado nos tres agentes — nenhum deles le o
+arquivo por conta propria nem duplica seu conteudo em Python.
 """
 
 from __future__ import annotations
@@ -17,16 +17,26 @@ from datetime import datetime, timezone
 from agente_gerador import AgenteGerador
 from agente_alvo import AgenteAlvo
 from agente_avaliador import AgenteAvaliador
+from config_loader import ConfigAgentesTeste
 from mock_tools import SandboxToolkit
 from repositorio import RepositorioEvidencia
 
 
-def executar_ciclo(caminho_casos: str, diretorio_saida: str) -> dict:
+def executar_ciclo(caminho_casos: str, diretorio_saida: str, caminho_config: str,
+                    familia_modelo_gerador: str = "familia-A",
+                    familia_modelo_alvo: str = "familia-A-em-teste",
+                    familia_modelo_avaliador: str = "familia-B") -> dict:
+    config = ConfigAgentesTeste(caminho_config)
     repo = RepositorioEvidencia(diretorio_saida)
 
-    gerador = AgenteGerador(repo)
-    alvo = AgenteAlvo(SandboxToolkit())
-    avaliador = AgenteAvaliador()
+    gerador = AgenteGerador(repo, config)
+    alvo = AgenteAlvo(config)
+    avaliador = AgenteAvaliador(
+        config,
+        familia_modelo_gerador=familia_modelo_gerador,
+        familia_modelo_alvo=familia_modelo_alvo,
+        familia_modelo_avaliador=familia_modelo_avaliador,
+    )
 
     casos = gerador.carregar_bateria(caminho_casos)
 
@@ -40,7 +50,7 @@ def executar_ciclo(caminho_casos: str, diretorio_saida: str) -> dict:
 
         vereditos.append(veredito)
 
-    relatorio = _montar_relatorio(casos, vereditos)
+    relatorio = _montar_relatorio(casos, vereditos, caminho_config)
 
     caminho_relatorio = os.path.join(diretorio_saida, "relatorio_final.json")
     with open(caminho_relatorio, "w", encoding="utf-8") as f:
@@ -49,7 +59,7 @@ def executar_ciclo(caminho_casos: str, diretorio_saida: str) -> dict:
     return relatorio
 
 
-def _montar_relatorio(casos, vereditos) -> dict:
+def _montar_relatorio(casos, vereditos, caminho_config) -> dict:
     total = len(vereditos)
     por_veredito = Counter(v.veredito for v in vereditos)
     por_severidade = Counter(v.severidade for v in vereditos)
@@ -65,12 +75,16 @@ def _montar_relatorio(casos, vereditos) -> dict:
         if v.revisao_humana_exigida and v.revisao_humana_status == "pendente"
     ]
 
+    conflitos_sinalizados = [v.id_caso for v in vereditos if v.conflito_de_interesse_sinalizado]
+
     return {
         "gerado_em": datetime.now(timezone.utc).isoformat(),
+        "config_utilizado": caminho_config,
         "total_casos_executados": total,
         "distribuicao_por_camada": dict(por_camada),
         "distribuicao_por_veredito": dict(por_veredito),
         "distribuicao_por_severidade": dict(por_severidade),
         "bloqueio_de_release": len(pendentes_revisao) > 0,
         "achados_pendentes_revisao_humana": pendentes_revisao,
+        "casos_com_conflito_de_interesse_sinalizado": conflitos_sinalizados,
     }

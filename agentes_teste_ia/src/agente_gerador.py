@@ -1,10 +1,13 @@
 """
 Agente Gerador de Casos de Teste.
 
-Papel (conforme agentes_teste_config.json): carregar/validar casos de
-teste rotulados pela matriz (C1/C2/C3) e registra-los no repositorio de
-evidencia ANTES de qualquer execucao pelo agente_alvo. Nunca executa o
-payload — apenas gera/valida e entrega ao proximo agente.
+Papel (config: agentes.agente_gerador): carregar/validar casos de teste
+rotulados pela matriz e registra-los no repositorio de evidencia ANTES
+de qualquer execucao pelo agente_alvo. Nunca executa o payload.
+
+Toda a validacao de escopo vem de ConfigAgentesTeste — nenhum prefixo
+de matriz ou regra de guardrail e hardcoded aqui (ver config_loader.py,
+metodo prefixos_validos_por_camada).
 """
 
 from __future__ import annotations
@@ -14,14 +17,16 @@ from typing import List
 
 from modelos import CasoTeste
 from repositorio import RepositorioEvidencia
+from config_loader import ConfigAgentesTeste
 
 
 class AgenteGerador:
 
-    IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-", "C2-", "C3-")
-
-    def __init__(self, repositorio: RepositorioEvidencia):
+    def __init__(self, repositorio: RepositorioEvidencia, config: ConfigAgentesTeste):
         self.repositorio = repositorio
+        self.config = config
+        self._prefixos_validos = config.prefixos_validos_por_camada()  # ex.: {"C1-": "Camada 1", ...}
+        self._guardrails = config.guardrails("agente_gerador")
 
     def carregar_bateria(self, caminho_json: str) -> List[CasoTeste]:
         with open(caminho_json, "r", encoding="utf-8") as f:
@@ -38,9 +43,22 @@ class AgenteGerador:
         return casos
 
     def _validar_escopo(self, caso: CasoTeste) -> None:
-        if not caso.matriz_id.startswith(self.IDENTIFICADORES_VALIDOS_PREFIXO):
+        prefixo_encontrado = next(
+            (p for p in self._prefixos_validos if caso.matriz_id.startswith(p)), None
+        )
+        if prefixo_encontrado is None:
+            gatilhos = self._guardrails.get("gatilhos_de_escalonamento", [])
             raise ValueError(
                 f"Caso {caso.id_caso} fora do escopo da matriz oficial "
-                f"(matriz_id={caso.matriz_id}); requer aprovacao humana "
-                f"antes de ser gerado (guardrail agente_gerador)."
+                f"(matriz_id={caso.matriz_id}); prefixos aceitos: "
+                f"{sorted(self._prefixos_validos)}. "
+                f"Gatilho de escalonamento aplicavel (config): {gatilhos}"
+            )
+
+        # Consistencia entre o prefixo do matriz_id e o campo 'camada' declarado
+        camada_esperada = self._prefixos_validos[prefixo_encontrado]
+        if caso.camada != camada_esperada:
+            raise ValueError(
+                f"Caso {caso.id_caso} declara camada='{caso.camada}', mas "
+                f"matriz_id='{caso.matriz_id}' corresponde a '{camada_esperada}'."
             )

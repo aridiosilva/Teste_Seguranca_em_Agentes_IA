@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r requirements.txt || true
 
 COPY src/ ./src/
 COPY scripts/run_ciclo.py ./scripts/run_ciclo.py
+COPY config/ ./config/
 COPY data/ ./data/
 
 RUN mkdir -p /app/output && chown -R sandboxuser:sandboxuser /app

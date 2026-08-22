@@ -1,17 +1,23 @@
 """
 Agente Alvo (agente sob avaliacao).
 
-Neste exemplo, o comportamento do alvo e SIMULADO por uma tabela
-deterministica (SIMULACAO_COMPORTAMENTO), para que a bateria de 20
-casos produza um resultado misto (a maioria resiste, alguns falham) e
-demonstre o pipeline completo — inclusive o caminho de escalonamento
-humano do agente_avaliador.
+O comportamento do alvo diante de cada caso e, por definicao, o dado
+que o proprio teste quer observar — por isso NAO vem do
+agentes_teste_config.json (o config descreve os TRES agentes de teste,
+nao o sistema sob teste). Neste exemplo, como nao ha um agente real
+para atacar, o comportamento e SIMULADO por uma tabela deterministica
+(SIMULACAO_COMPORTAMENTO), documentada e isolada nesta classe, para que
+a bateria produza um resultado misto e exercite o pipeline completo —
+inclusive o caminho de escalonamento humano.
 
-Em uso real, a classe AgenteAlvo.executar() deveria ser substituida
-pela chamada real ao agente de IA sob teste (via API), SEMPRE dentro do
-sandbox e SEMPRE com as ferramentas reais trocadas pelas mocks deste
-modulo (nunca ferramentas com efeito real — guardrail global do
-framework).
+O que o AgenteAlvo LE do config: os limites_de_escopo do seu proprio
+guardrail (para confirmar, ao iniciar, que esta configurado para operar
+apenas em sandbox — falha rapido caso contrario) e a allowlist de
+ambiente para instanciar o SandboxToolkit.
+
+Em uso real, troque o corpo de `executar()` pela chamada real ao
+agente de IA sob teste, mantendo as ferramentas reais substituidas
+pelas equivalentes de mock_tools.py.
 """
 
 from __future__ import annotations
@@ -20,9 +26,10 @@ from typing import List
 
 from modelos import CasoTeste, ExecucaoAlvo, ChamadaFerramenta
 from mock_tools import SandboxToolkit
+from config_loader import ConfigAgentesTeste
 
 
-# Tabela de comportamento simulado por matriz_id.
+# Tabela de comportamento SIMULADO por matriz_id (ver docstring do modulo).
 # "resiste": o agente recusa a instrucao maliciosa (comportamento correto).
 # "cumpre": o agente executa a instrucao maliciosa (vulnerabilidade encontrada).
 SIMULACAO_COMPORTAMENTO = {
@@ -41,8 +48,19 @@ SIMULACAO_COMPORTAMENTO = {
 
 class AgenteAlvo:
 
-    def __init__(self, toolkit: SandboxToolkit):
-        self.toolkit = toolkit
+    def __init__(self, config: ConfigAgentesTeste):
+        self._verificar_escopo_sandbox(config)
+        self.toolkit = SandboxToolkit(config.ambiente_sandbox())
+
+    @staticmethod
+    def _verificar_escopo_sandbox(config: ConfigAgentesTeste) -> None:
+        limites = config.limites_de_escopo("agente_alvo")
+        if not any("sandbox" in item.lower() for item in limites):
+            raise RuntimeError(
+                "config.agentes.agente_alvo.guardrails.limites_de_escopo nao "
+                "declara operacao exclusiva em sandbox — abortando por "
+                "seguranca. Corrija o config antes de rodar o ciclo."
+            )
 
     def executar(self, caso: CasoTeste) -> ExecucaoAlvo:
         comportamento = SIMULACAO_COMPORTAMENTO.get(caso.matriz_id, "resiste")

@@ -122,11 +122,20 @@ class MockMCPConnector:
 
 
 class SandboxToolkit:
-    """Agrega todas as ferramentas mockadas disponiveis ao agente_alvo."""
+    """Agrega todas as ferramentas mockadas disponiveis ao agente_alvo.
 
-    def __init__(self):
-        self.email = MockEmailTool(destinatarios_autorizados={"usuario@empresa-teste.com"})
+    As allowlists (dominios/e-mails autorizados) vem de
+    config.ambiente_sandbox() — nao sao mais hardcoded aqui. Isso separa
+    "quem o agente_alvo e" (persona, definida no config de agentes) de
+    "o que e considerado legitimo neste ambiente" (allowlist, que muda
+    entre dev/homolog/produção sem alterar a persona)."""
+
+    def __init__(self, ambiente_sandbox: dict):
+        dominios = set(ambiente_sandbox["dominios_permitidos"])
+        emails = set(ambiente_sandbox["destinatarios_email_autorizados"])
+
+        self.email = MockEmailTool(destinatarios_autorizados=emails)
         self.database = MockDatabaseTool(permissao="leitura")
         self.filesystem = MockFileSystemTool()
-        self.web = MockURLFetcher(dominios_permitidos={"empresa-teste.com", "docs.empresa-teste.com"})
+        self.web = MockURLFetcher(dominios_permitidos=dominios)
         self.mcp = MockMCPConnector()
