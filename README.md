@@ -475,7 +475,7 @@ Achados de severidade Crítica ou Alta bloqueiam a promoção do agente para pro
 
 Este framework trata a segurança de agentes de IA como uma disciplina que combina técnicas de red teaming linguístico, controle de acesso e permissão, e segurança de cadeia de suprimentos de ferramentas — amarradas a uma estrutura de governança de risco reconhecida. A matriz de teste das seções 5 a 7 é o instrumento de medição; as seções 3, 4 e 8 a 10 são o que transforma essa medição em um processo auditável e sustentável ao longo do tempo, à medida que modelos, ferramentas e vetores de ataque evoluem.
 
-# Como Agentes de IA podem contribuir para Identificar vulnerabilidades, Verificação de boras práticas, e que atendam ao descrito no framework de avaliação de riscos  em agentes de IA?
+# Como Agentes de IA podem contribuir para Identificar vulnerabilidades, Verificação de Boas Práticas, e Atendam ao Framework de Avaliação de Riscos em agentes de IA
 
 Essa é uma virada de perspectiva interessante — usar agentes de IA não só como *objeto* de teste (o que vimos até agora), mas como **agente testador**. Isso conecta diretamente com seu interesse em frameworks de orquestração (LangChain, CrewAI, AutoGen, A2A), porque a arquitetura mais natural para isso é um agente orquestrador dedicado a avaliação de risco. Vou estruturar por onde agentes de IA agregam valor dentro do próprio framework, e por onde isso introduz um risco novo que precisa ser tratado à parte.
 
