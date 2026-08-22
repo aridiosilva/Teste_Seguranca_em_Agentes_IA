@@ -1,0 +1,8 @@
+# Este exemplo usa apenas a biblioteca padrao do Python (json, dataclasses,
+# uuid, datetime, argparse) — nenhuma dependencia externa e necessaria para
+# rodar a bateria de 20 casos com o agente_alvo simulado.
+#
+# Se o agente_alvo for substituido por uma chamada real ao agente sob
+# teste (via API), adicione aqui o SDK correspondente, por exemplo:
+# anthropic>=0.40.0
+# requests>=2.32.0
