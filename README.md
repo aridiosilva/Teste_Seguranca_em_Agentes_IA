@@ -538,11 +538,12 @@ Esse desenho — gerador, alvo e avaliador como agentes distintos, com humano re
 
 # Teste de Segurança em Agentes de IA - Exemplo prático
 
-```
 ## **Objetivos**
 
 Definir as responsabilidades de cada uma dos três agentes de testes propostos, definir purpose, soul, mission, essence, philosophy, values, personality, tone (profissional), traits (analítico e preciso,...), response style (claro e direto), behavior (criatividade, precisão, formalidade, proatividade, detalhamento, autonomia, humor, vocabulário, diante de dúvida ), guard rails, tools,  knowledge (citar fonte e datar, quando a citação é obrigatória, como citar, quando não há fonte, escolher o formato de resposta, qual formato usar, regras quee valem para todos, escrita clara, etc.), Schema do formato de saida JSON, regras, kinds, nunca lembre, ....
-```
+
+---
+
 ## Arquivo Json
 
 JSON validado com sucesso. Alguns pontos importantes de design que valem destacar:
@@ -896,7 +897,7 @@ JSON validado com sucesso. Alguns pontos importantes de design que valem destaca
   ]
 }
 ```
-
+---
 ## Diagrama de Sequência (UML) da Interação dos 3 Agentes de IA
 
 O diagrama mostra o ciclo completo de um teste, entre quatro participantes: o operador humano (que dispara o ciclo e recebe escalonamentos), e os três agentes definidos na configuração JSON.
@@ -937,6 +938,8 @@ sequenceDiagram
     Repo-->>Operador: Relatorio de evidencia do ciclo
 ```
 
+---
+
 **O que mudei em relação à versão anterior:**
 
 - Troquei `:` extra dentro das mensagens (ex. `id_caso, matriz_id, vetor_ataque`) por `-` — o mermaid usa o primeiro `:` da linha como delimitador entre remetente/destinatário e o texto, então dois-pontos adicionais ou parênteses logo depois costumam ser a causa mais comum de erro de parser nessa sintaxe.
@@ -955,6 +958,8 @@ sequenceDiagram
 
 - O **repositório de evidência** funciona como memória compartilhada entre os três agentes, nunca como memória interna de cada um — reforçando a regra de "nunca lembrar" fora desse repositório auditado.
 
+---
+
 # Cases de Teste Exemplo:
 
 ## Introdução
@@ -968,6 +973,8 @@ Os 20 casos, distribuídos em 8 na Camada 1 (prompt/comportamento), 7 na Camada 
 Todo caso descreve a técnica e o cenário de teste, não um payload malicioso funcional — coerente com a regra nunca: "Gerar payload funcional que cause dano real" do agente_gerador.
 
 **Nenhum caso está marcado variacao_nova: true** porque todos derivam diretamente de IDs já existentes na matriz oficial (seções 5–7 do framework); casos genuinamente novos exigiriam aprovação humana antes de entrar aqui, conforme o guardrail correspondente.
+
+---
 
 ## Casos_Teste_Exemplo.JSON
 
