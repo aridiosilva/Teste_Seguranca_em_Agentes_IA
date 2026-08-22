@@ -1342,17 +1342,96 @@ deploy.
 
 ## Nota importante sobre o `agente_alvo`
 
-Neste exemplo, `agente_alvo.py` usa uma **tabela de comportamento
-simulado** (`SIMULACAO_COMPORTAMENTO`) para produzir um resultado misto
-e demonstrar o pipeline completo — incluindo o caminho de
-escalonamento humano quando há falha. Isso é intencional: o objetivo
-deste código é servir de esqueleto e demonstrar o fluxo
-gerador → alvo → avaliador → evidência, não avaliar um agente real.
+Neste exemplo, `agente_alvo.py` usa uma **tabela de comportamento simulado** (`SIMULACAO_COMPORTAMENTO`) para produzir um resultado misto e demonstrar o pipeline completo — incluindo o caminho de escalonamento humano quando há falha. Isso é intencional: o objetivo deste código é servir de esqueleto e demonstrar o 
 
-Para uso real, substitua o corpo de `AgenteAlvo.executar()` pela
-chamada de fato ao agente de IA sob teste (via API), mantendo:
+       fluxo gerador → alvo → avaliador → evidência, não avaliar um agente real.
+
+Para uso real, substitua o corpo de `AgenteAlvo.executar()` pela chamada de fato ao agente de IA sob teste (via API), mantendo:
 
 1. Todas as ferramentas do agente real trocadas por equivalentes de `mock_tools.py` — nunca ferramentas com efeito real.
 2. Execução exclusivamente dentro do sandbox Docker sem rede (`--network none`), com qualquer chamada de API ao próprio provedor do modelo liberada por uma allowlist explícita de DNS/IP, nunca por acesso irrestrito.
 3. Registro de toda entrada/saída no repositório de evidência antes de qualquer outra etapa — já implementado em `repositorio.py`.
+
+## Importância do Arquivo de Configuração do Behavior e Outros Parâmetros dos Agentes de Testes
+
+### Onde deveria ficar agentes_teste_config.json
+
+```
+agentes_teste_ia/
+├── config/
+│   └── agentes_teste_config.json     ← aqui
+├── data/
+│   └── casos_teste_exemplo.json
+├── src/
+│   ├── config_loader.py              ← módulo novo para ler e validar o config
+│   ├── modelos.py
+│   ├── repositorio.py
+│   ├── mock_tools.py
+│   ├── agente_gerador.py
+│   ├── agente_alvo.py
+│   ├── agente_avaliador.py
+│   └── orquestrador.py
+└── scripts/
+    └── run_ciclo.py
+```
+
+Faz sentido em config/ (não em data/) porque ele não é um insumo de teste — é a especificação de comportamento dos próprios agentes, análoga a um arquivo de configuração de infraestrutura.
+
+## Quando cada agente deveria lê-lo
+
+### Momento	Quem lê	O que extrai
+
+- Inicialização do AgenteGerador	agentes.agente_gerador.guardrails	Lista nunca/sempre, prefixos válidos de matriz_id, para substituir a validação hardcoded em _validar_escopo()
+
+- Inicialização do AgenteAlvo	agentes.agente_alvo.guardrails.limites_de_escopo	Confirma que está rodando em sandbox antes de aceitar qualquer caso
+
+- Inicialização do AgenteAvaliador	agentes.agente_avaliador.behavior.autonomia + schema_saida_json	Critérios de severidade (hoje hardcoded em CRITERIOS_SEVERIDADE) e quais severidades exigem revisao_humana_exigida=True — isso deveria vir do regras_globais.aprovacao_humana, não de um set fixo no código
+
+- A cada avaliação	agentes.agente_avaliador.guardrails.nunca	Checagem de conflito de interesse (separacao_de_papeis) usando os dados reais de família de modelo, não os valores fixos que usei ("modelo-A", "modelo-B")
+
+
+Antes (hardcoded em Python)	Agora (lido do config)
+IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-","C2-","C3-")	Derivado de agentes.agente_gerador.tipos_de_teste via regex
+CRITERIOS_SEVERIDADE = {...}	config.criterios_severidade() — novo campo que adicionei ao JSON
+SEVERIDADES_QUE_EXIGEM_REVISAO_HUMANA = {"Crítica","Alta"}	config.regras_globais.severidades_que_exigem_revisao_humana — idem
+Allowlist de e-mail/domínio no SandboxToolkit.__init__	config.ambiente_sandbox() — ide
+
+### Por que isso importa na prática
+
+Do jeito que está hoje, se alguém editar o agentes_teste_config.json — por exemplo, mudar revisao_humana_exigida para incluir severidade Média, ou adicionar uma nova proibição em proibicoes_absolutas — nada muda no comportamento real dos agentes, porque o código não olha para esse arquivo. O JSON vira documentação que pode divergir silenciosamente da implementação, que é exatamente o tipo de risco que o próprio framework foi desenhado para pegar (seção 10, gatilho "alteração do system prompt ou das instruções de comportamento do agente").
+
+Assim será implementado o config_loader.py e reescreva os três agentes para carregar do JSON em vez de hardcode? É uma mudança direta — dá pra manter a mesma interface pública das classes e só trocar de onde vêm os valores.
+
+## O Módulo config_loader.py
+
+Agora o config_loader.py, que valida a estrutura e expõe os dados de forma tipada:
+
+Idêntico ao resultado anterior — mas agora todo o comportamento vem do **config**. Vou provar isso com dois **testes de regressão**:
+
+   (1) o config quebra o ciclo se estiver incompleto; 
+   (2) mudar uma regra no JSON muda o comportamento sem tocar no código.
+
+Executou 6 comandos, editou 6 arquivos, leu um arquivo · 5 notas
+
+O **agentes_teste_config.json** fica em config/agentes_teste_config.json, e é lido uma única vez, no início do ciclo, por **orquestrador.executar_ciclo()** via **ConfigAgentesTeste** — que valida a estrutura e é então injetado nos três agentes (AgenteGerador, AgenteAlvo, AgenteAvaliador) pelo construtor. Nenhum agente lê o arquivo por conta própria nem duplica seu conteúdo.
+
+## O que mudou de fato no código, removendo o hardcode:
+
+```txt
+- Antes (hardcoded em Python)	Agora (lido do config)
+
+-  IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-","C2-","C3-")	Derivado de agentes.agente_gerador.tipos_de_teste via regex
+
+- CRITERIOS_SEVERIDADE = {...}	config.criterios_severidade() — novo campo que adicionei ao JSON
+
+- SEVERIDADES_QUE_EXIGEM_REVISAO_HUMANA = {"Crítica","Alta"}	config.regras_globais.severidades_que_exigem_revisao_humana — idem
+
+- Allowlist de e-mail/domínio no SandboxToolkit.__init__	config.ambiente_sandbox() — idem
+```
+
+Precisei estender o JSON com três campos que não existiam nele antes (criterios_severidade, regras_globais.severidades_que_exigem_revisao_humana, ambiente_sandbox) — a versão original só descrevia guardrails em texto livre, não valores que o código pudesse consumir diretamente. Documentei isso no README.
+
+Validei que a mudança é real com dois testes de regressão (rodei os dois, resultados no README): apagar criterios_severidade do config derruba o ciclo com exit code 2 antes de qualquer caso rodar; e mudar severidades_que_exigem_revisao_humana para incluir Baixa faz os 20 casos passarem a exigir revisão humana — só editando o JSON, sem tocar em nenhum .py.
+
+A única coisa que deliberadamente não movi para o config foi o comportamento simulado do agente_alvo (SIMULACAO_COMPORTAMENTO) — expliquei o porquê no README: ele representa o sistema sob teste, não a definição dos agentes de teste, então não pertence ao arquivo que descreve gerador/alvo/avaliador.
 
