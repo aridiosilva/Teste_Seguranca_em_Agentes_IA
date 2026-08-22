@@ -1557,22 +1557,22 @@ Faz sentido em config/ (não em data/) porque ele não é um insumo de teste —
 
 ## Quando cada agente deveria lê-lo
 
-### Momento	Quem lê	O que extrai
-
-- Inicialização do AgenteGerador	agentes.agente_gerador.guardrails	Lista nunca/sempre, prefixos válidos de matriz_id, para substituir a validação hardcoded em _validar_escopo()
-
-- Inicialização do AgenteAlvo	agentes.agente_alvo.guardrails.limites_de_escopo	Confirma que está rodando em sandbox antes de aceitar qualquer caso
-
-- Inicialização do AgenteAvaliador	agentes.agente_avaliador.behavior.autonomia + schema_saida_json	Critérios de severidade (hoje hardcoded em CRITERIOS_SEVERIDADE) e quais severidades exigem revisao_humana_exigida=True — isso deveria vir do regras_globais.aprovacao_humana, não de um set fixo no código
-
-- A cada avaliação	agentes.agente_avaliador.guardrails.nunca	Checagem de conflito de interesse (separacao_de_papeis) usando os dados reais de família de modelo, não os valores fixos que usei ("modelo-A", "modelo-B")
+| Momento | Quem lê | O que extrai |
+|---|---|---|
+| Inicialização do `AgenteGerador` | `agentes.agente_gerador.guardrails` | Lista `nunca`/`sempre`, prefixos válidos de `matriz_id`, para substituir a validação hardcoded em `_validar_escopo()` |
+| Inicialização do `AgenteAlvo` | `agentes.agente_alvo.guardrails.limites_de_escopo` | Confirma que está rodando em sandbox antes de aceitar qualquer caso |
+| Inicialização do `AgenteAvaliador` | `agentes.agente_avaliador.behavior.autonomia` + `schema_saida_json` | Critérios de severidade (hoje hardcoded em `CRITERIOS_SEVERIDADE`) e quais severidades exigem `revisao_humana_exigida=True` — isso deveria vir do `regras_globais.aprovacao_humana`, não de um `set` fixo no código |
+| A cada avaliação | `agentes.agente_avaliador.guardrails.nunca` | Checagem de conflito de interesse (`separacao_de_papeis`) usando os dados reais de família de modelo, não os valores fixos que usei (`"modelo-A"`, `"modelo-B"`) |
 
 
-Antes (hardcoded em Python)	Agora (lido do config)
-IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-","C2-","C3-")	Derivado de agentes.agente_gerador.tipos_de_teste via regex
-CRITERIOS_SEVERIDADE = {...}	config.criterios_severidade() — novo campo que adicionei ao JSON
-SEVERIDADES_QUE_EXIGEM_REVISAO_HUMANA = {"Crítica","Alta"}	config.regras_globais.severidades_que_exigem_revisao_humana — idem
-Allowlist de e-mail/domínio no SandboxToolkit.__init__	config.ambiente_sandbox() — ide
+## O que mudou de fato no código, removendo o hardcode
+
+| Antes (hardcoded em Python) | Agora (lido do config) |
+|---|---|
+| `IDENTIFICADORES_VALIDOS_PREFIXO = ("C1-","C2-","C3-")` | Derivado de `agentes.agente_gerador.tipos_de_teste` via regex |
+| `CRITERIOS_SEVERIDADE = {...}` | `config.criterios_severidade()` — novo campo que adicionei ao JSON |
+| `SEVERIDADES_QUE_EXIGEM_REVISAO_HUMANA = {"Crítica","Alta"}` | `config.regras_globais.severidades_que_exigem_revisao_humana` — idem |
+| Allowlist de e-mail/domínio no `SandboxToolkit.__init__` | `config.ambiente_sandbox()` — idem |
 
 ### Por que isso importa na prática
 
