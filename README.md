@@ -475,4 +475,53 @@ Achados de severidade Crítica ou Alta bloqueiam a promoção do agente para pro
 
 Este framework trata a segurança de agentes de IA como uma disciplina que combina técnicas de red teaming linguístico, controle de acesso e permissão, e segurança de cadeia de suprimentos de ferramentas — amarradas a uma estrutura de governança de risco reconhecida. A matriz de teste das seções 5 a 7 é o instrumento de medição; as seções 3, 4 e 8 a 10 são o que transforma essa medição em um processo auditável e sustentável ao longo do tempo, à medida que modelos, ferramentas e vetores de ataque evoluem.
 
+# Como Agentes de IA podem contribuir para Identificar vulnerabilidades, Verificação de boras práticas, e que atendam ao descrito no framework de avaliação de riscos  em agentes de IA?
 
+Essa é uma virada de perspectiva interessante — usar agentes de IA não só como *objeto* de teste (o que vimos até agora), mas como **agente testador**. Isso conecta diretamente com seu interesse em frameworks de orquestração (LangChain, CrewAI, AutoGen, A2A), porque a arquitetura mais natural para isso é um agente orquestrador dedicado a avaliação de risco. Vou estruturar por onde agentes de IA agregam valor dentro do próprio framework, e por onde isso introduz um risco novo que precisa ser tratado à parte.
+
+## 1. Identificação de vulnerabilidades (execução da Camada 1–3)
+
+Um agente pode automatizar a *geração e execução* dos casos de teste da matriz, não só rodar uma lista fixa:
+
+- **Geração adversarial dinâmica**: em vez de um conjunto estático de prompts de ataque, um agente gerador cria variações a cada ciclo (paráfrases, novos idiomas, combinações de técnicas de C1-01 a C1-11), reduzindo o risco de o agente-alvo "decorar" os testes conhecidos.
+- **Busca automatizada de payload splitting e jailbreaks emergentes**: um agente pode monitorar continuamente técnicas novas publicadas pela comunidade de red teaming e traduzir isso em novos casos de teste — mantendo a matriz viva, não estática.
+- **Simulação de conteúdo malicioso indireto (C1-04, C1-05, C3-02)**: um agente pode gerar documentos, páginas web e descrições de ferramenta "envenenadas" de forma realista, testando a Camada 1 e a Camada 3 ao mesmo tempo.
+- **Fuzzing orientado por objetivo**: em vez de testes isolados, um agente com o objetivo declarado "extrair o system prompt" ou "conseguir que o agente-alvo envie um e-mail sem confirmação" pode iterar autonomamente até achar um caminho — isso é o equivalente automatizado do trabalho manual de um pentester humano, e cobre bem os cenários de Camada 2 (C2-01 a C2-08).
+
+## 2. Verificação de boas práticas (Camada 2 e 3, foco em permissão)
+
+Aqui o agente atua mais como **auditor de configuração** do que como atacante:
+
+- **Varredura de escopo de credencial** (C3-05): um agente pode inspecionar programaticamente os tokens/escopos concedidos a cada ferramenta conectada e sinalizar permissão excessiva frente à função declarada — algo que hoje normalmente é feito manualmente.
+- **Checagem de descrições de ferramenta** (C3-02, tool poisoning): um agente verificador pode analisar todas as descrições de ferramentas MCP conectadas em busca de instruções embutidas ao modelo, comparando a descrição declarada ao usuário com o texto real enviado ao LLM.
+- **Verificação de revogação** (C3-06): testar programaticamente, após desconexão de um servidor, se o token realmente para de funcionar.
+- **Checklist automatizado contra o OWASP LLM Top 10 / Agentic AI**: um agente pode ler a configuração do sistema (ferramentas, prompts, política de confirmação) e apontar qual item do checklist está coberto, parcialmente coberto, ou ausente — funcionando como um "linter de conformidade" antes mesmo de rodar testes dinâmicos.
+
+## 3. Conformidade contínua com o framework (Camada de Governança)
+
+Isso é onde os agentes se conectam diretamente às seções 8–10 do documento:
+
+- **Execução do ciclo de reavaliação** (seção 10): um agente orquestrador pode monitorar os gatilhos definidos — atualização de modelo, mudança de system prompt, novo conector — e disparar automaticamente a matriz completa de testes quando qualquer um deles ocorrer, em vez de depender de processo manual.
+- **Registro estruturado de evidência** (seção 9): um agente pode preencher automaticamente o registro mínimo de evidência por caso de teste (prompt, resposta, veredito, severidade, referência cruzada), reduzindo esforço manual de documentação para auditoria.
+- **Classificação de severidade assistida**: um agente pode propor a severidade inicial de um achado com base nos critérios da seção 9, deixando a decisão final para revisão humana — útil em volume alto de testes.
+
+## 4. O ponto crítico: o agente testador introduz um risco novo
+
+Usar um agente para testar outro agente não é neutro — isso adiciona uma camada de confiança que precisa ser tratada explicitamente dentro do próprio framework, não como algo à parte:
+
+- **O agente avaliador também precisa passar pelas Camadas 1–3.** Se o avaliador tem ferramentas (para gerar payloads, acessar logs, disparar testes), ele é, ele mesmo, um agente com superfície de risco — sujeito a confused deputy, escalação de privilégio etc.
+- **Falso senso de cobertura**: um agente que gera e avalia seus próprios testes pode convergir para os mesmos padrões repetidamente (viés do próprio modelo), dando sensação de cobertura sem realmente explorar vetores novos. Por isso, testes gerados por agente devem complementar — não substituir — bancos de ataque mantidos por humanos e comunidade (ex.: datasets de jailbreak conhecidos).
+- **Avaliação automática do veredito é falível**: se um segundo agente decide sozinho se o agente-alvo "passou" ou "falhou" num caso de teste, erros de julgamento do avaliador viram falso negativo silencioso. Achados de severidade Crítica ou Alta (seção 9) deveriam manter revisão humana obrigatória antes de fechar o caso, mesmo com veredito automatizado.
+- **Governança do próprio avaliador** (função Govern do NIST AI RMF): quem aprova mudanças no agente testador? Se ele for atualizado silenciosamente, a confiabilidade de todo o programa de teste cai — é o mesmo risco de C3-01 (update silencioso), só que aplicado à ferramenta de avaliação, não ao alvo.
+
+## Como isso se encaixaria na arquitetura
+
+Uma boa prática é orquestrar isso como pelo menos três papéis separados, nunca um agente único fazendo tudo:
+
+| Papel | Função | Risco a mitigar se combinado |
+|---|---|---|
+| Agente gerador de ataque | Cria/varia casos de teste das Camadas 1–3 | — |
+| Agente-alvo | O agente sob avaliação | — |
+| Agente avaliador de veredito | Classifica passou/falhou e severidade | Se for o mesmo modelo do gerador, tende a "aprovar" seus próprios ataques com mais facilidade |
+
+Esse desenho — gerador, alvo e avaliador como agentes distintos, com humano revisando achados críticos — é o que permite escalar a matriz de teste do framework sem transformar o próprio processo de avaliação em um novo ponto cego.
